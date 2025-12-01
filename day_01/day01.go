@@ -20,10 +20,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// fmt.Println(turn(11, RIGHT, 8))
-	// fmt.Println(turn(0, LEFT, 1))
-	// fmt.Println(turn(99, RIGHT, 1))
-	// fmt.Println(turn(5, LEFT, 10))
 	pos := 50
 	zeroCount := 0
 	zeroPassCount := 0
@@ -37,7 +33,7 @@ func main() {
 		if err != nil || n != 2 {
 			log.Fatalf("Failed to parse line: %s", line)
 		}
-		fmt.Println(line)
+
 		pos, zp = turn(pos, dir, count)
 
 		if pos == 0 {
@@ -50,13 +46,6 @@ func main() {
 	fmt.Println("Part 1:", zeroCount)
 	fmt.Println("Part 2:", zeroCount+zeroPassCount)
 }
-
-// type Direction int
-
-// const (
-// 	LEFT Direction = iota
-// 	RIGHT
-// )
 
 func turn(origPos int, dir rune, count int) (int, int) {
 	zpc := count / 100

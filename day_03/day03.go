@@ -45,7 +45,8 @@ func processBanks(batteryBanks [][]int, digitCount int) int {
 	totalJoltage := 0
 
 	for _, bank := range batteryBanks {
-		joltage := process(bank, 0, 0, digitCount)
+		// joltage := process(bank, 0, 0, digitCount)
+		joltage := processNonRecursion(bank, digitCount)
 		totalJoltage += joltage
 	}
 
@@ -75,6 +76,33 @@ func process(bank []int, currentJoltage int, pos int, digitCount int) int {
 
 	joltage := (currentJoltage * 10) + maxValue
 	return process(bank, joltage, maxPos+1, digitCount-1)
+}
+
+func processNonRecursion(bank []int, digitCount int) int {
+	startPos := 0
+	joltage := 0
+
+	for i := range digitCount {
+		// Find max from remaining digits, leaving enough room for the rest of the digits
+		var maxValue, maxPos int
+
+		for j := startPos; j < len(bank)-digitCount+i+1; j++ {
+			if bank[j] > maxValue {
+				maxValue = bank[j]
+				maxPos = j
+
+				if maxValue == 9 {
+					// Can't do better than a 9, so stop looking
+					break
+				}
+			}
+		}
+
+		joltage = (joltage * 10) + maxValue
+		startPos = maxPos + 1
+	}
+
+	return joltage
 }
 
 func partOne(batteryBanks [][]int) {

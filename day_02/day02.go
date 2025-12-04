@@ -28,9 +28,9 @@ func main() {
 	var ranges []Range
 
 	for _, line := range inputLines {
-		parts := strings.Split(line, ",")
+		parts := strings.SplitSeq(line, ",")
 
-		for _, part := range parts {
+		for part := range parts {
 			var start, end int
 			n, err := fmt.Sscanf(part, "%d-%d", &start, &end)
 			if err != nil || n != 2 {
@@ -54,7 +54,6 @@ func main() {
 
 			// Part 1 stuff
 			if len(str)%2 == 0 {
-
 				if str[0:halfLen] == str[halfLen:] {
 					// fmt.Println(str)
 					part1Total += i

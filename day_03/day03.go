@@ -65,6 +65,11 @@ func process(bank []int, currentJoltage int, pos int, digitCount int) int {
 		if bank[i] > maxValue {
 			maxValue = bank[i]
 			maxPos = i
+
+			if maxValue == 9 {
+				// Can't do better than a 9, so stop looking
+				break
+			}
 		}
 	}
 

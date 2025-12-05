@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -30,11 +31,14 @@ func main() {
 		}
 	}
 
+	begin := time.Now()
+
 	// Part 1 stuff
 	moveablePoints := getMoveablePoints(points)
-	fmt.Println("Part 1:", len(moveablePoints))
+	fmt.Printf("Part 1: %d (%v)\n", len(moveablePoints), time.Since(begin))
 
 	// Part 2 stuff
+	begin = time.Now()
 	totalMoved := 0
 
 	for len(moveablePoints) > 0 {
@@ -47,7 +51,7 @@ func main() {
 		moveablePoints = getMoveablePoints(points)
 	}
 
-	fmt.Println("Part 2:", totalMoved)
+	fmt.Printf("Part 2: %d (%v)\n", totalMoved, time.Since(begin))
 }
 
 func getMoveablePoints(points map[Point]bool) []Point {

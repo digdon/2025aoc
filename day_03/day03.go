@@ -34,11 +34,10 @@ func main() {
 	}
 
 	begin := time.Now()
+	fmt.Printf("Part 1: %d (%v)\n", processBanks(batteryBanks, 2), time.Since(begin))
 
-	fmt.Println("Part 1:", processBanks(batteryBanks, 2))
-	fmt.Println("Part 2:", processBanks(batteryBanks, 12))
-
-	fmt.Println("Elapsed time:", time.Since(begin))
+	begin = time.Now()
+	fmt.Printf("Part 2: %d (%v)\n", processBanks(batteryBanks, 12), time.Since(begin))
 }
 
 func processBanks(batteryBanks [][]int, digitCount int) int {

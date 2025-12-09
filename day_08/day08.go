@@ -59,6 +59,7 @@ func main() {
 
 	for i := range edges {
 		if i == 1000 {
+			// Part 1 stuff
 			sort.Slice(circuitList, func(i, j int) bool {
 				return len(circuitList[i]) > len(circuitList[j])
 			})
@@ -99,6 +100,7 @@ func main() {
 			circuitList = append(circuitList[:existBIdx], circuitList[existBIdx+1:]...)
 		}
 
+		// Part 2 stuff
 		if len(circuitList) == 1 && len(circuitList[0]) == len(points) {
 			// All points are now connected
 			xMult := a.X * b.X

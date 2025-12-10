@@ -78,10 +78,9 @@ func part2(points []Point) {
 	begin := time.Now()
 
 	// Find all of the edges, categorized into horizontal and vertical
-	cw := false
-	horizontalEdges, verticalEdges := calculateEdges(points, cw)
+	horizontalEdges, verticalEdges := calculateEdges(points)
 
-	// Build a rectangle for each pair of points
+	// Build a rectangle for each pair of points, then check to see if it falls fully within the shape
 	var maxA, maxB Point
 	var maxArea int
 
@@ -91,9 +90,11 @@ func part2(points []Point) {
 		for j := i + 1; j < len(points); j++ {
 			b := points[j]
 
+			// The rectangle
 			topLeft := Point{X: min(a.X, b.X), Y: min(a.Y, b.Y)}
 			bottomRight := Point{X: max(a.X, b.X), Y: max(a.Y, b.Y)}
 
+			// Check to see if the rectangle is fully contained within the shape
 			good := containedSimplified(topLeft, bottomRight, horizontalEdges, verticalEdges)
 			// fmt.Printf("%v %v: %v\n", topLeft, bottomRight, good)
 			// if contained(topLeft, bottomRight, horizontalEdges, verticalEdges) {
@@ -110,32 +111,11 @@ func part2(points []Point) {
 		}
 	}
 
-	// fmt.Println(horizontalEdges)
-	// fmt.Println(verticalEdges)
 	fmt.Printf("%v - %v: %d\n", maxA, maxB, maxArea)
 	fmt.Printf("Part 2: %d (%v)\n", maxArea, time.Since(begin))
 }
 
-func shoelace(points []Point) int {
-	var area int
-
-	for i := range points {
-		var a, b Point
-		a = points[i]
-
-		if i == len(points)-1 {
-			b = points[0]
-		} else {
-			b = points[i+1]
-		}
-
-		area += (a.X * b.Y) - (a.Y * b.X)
-	}
-
-	return area / 2
-}
-
-func calculateEdges(points []Point, cw bool) ([]Edge, []Edge) {
+func calculateEdges(points []Point) ([]Edge, []Edge) {
 	// Work out each edge. Organize them based on horizontal vs vertical. For each edge, record if the left side is "inside"
 	horizontalEdges, verticalEdges := []Edge{}, []Edge{}
 
@@ -152,18 +132,18 @@ func calculateEdges(points []Point, cw bool) ([]Edge, []Edge) {
 		if a.X == b.X {
 			// Vertical edge
 			if b.Y > a.Y {
-				verticalEdges = append(verticalEdges, Edge{A: a, B: b, left: cw})
+				verticalEdges = append(verticalEdges, Edge{A: a, B: b})
 			} else {
-				verticalEdges = append(verticalEdges, Edge{A: b, B: a, left: !cw})
+				verticalEdges = append(verticalEdges, Edge{A: b, B: a})
 			}
 		}
 
 		if a.Y == b.Y {
 			// Horizontal edge
 			if b.X > a.X {
-				horizontalEdges = append(horizontalEdges, Edge{A: a, B: b, left: !cw})
+				horizontalEdges = append(horizontalEdges, Edge{A: a, B: b})
 			} else {
-				horizontalEdges = append(horizontalEdges, Edge{A: b, B: a, left: cw})
+				horizontalEdges = append(horizontalEdges, Edge{A: b, B: a})
 			}
 		}
 	}
@@ -172,7 +152,7 @@ func calculateEdges(points []Point, cw bool) ([]Edge, []Edge) {
 }
 
 // This is a simplified version of contained() that only checks if edges fall fully within the rectangle. This probably
-// works for the specific input data, but is not a general solution.
+// only works for the specific input data, but is not a general solution.
 func containedSimplified(topLeft, bottomRight Point, horizontalEdges, verticalEdges []Edge) bool {
 	// Check horizontal edges
 	for _, edge := range horizontalEdges {
@@ -205,61 +185,12 @@ func containedSimplified(topLeft, bottomRight Point, horizontalEdges, verticalEd
 	return true
 }
 
-func contained(topLeft, bottomRight Point, horizontalEdges, verticalEdges []Edge) bool {
-	// Check horizontal edges
-	for _, edge := range horizontalEdges {
-		// Does the edge horizontally line up with the rectangle?
-		if edge.A.X >= bottomRight.X || edge.B.X <= topLeft.X {
-			// Falls completely outside horizontally, so ignore it
-			continue
-		}
-
-		// Potentialy involved, so perform additional checks
-
-		// Does the edge fall within the rectangle vertically?
-		if edge.A.Y > topLeft.Y && edge.A.Y < bottomRight.Y {
-			// Edge falls within the rectangle, so it's not contained
-			return false
-		}
-
-		// Now check to see if the rectangle is "outside" the edge
-		if (edge.left && bottomRight.Y > edge.A.Y) || (!edge.left && topLeft.Y < edge.A.Y) {
-			return false
-		}
-	}
-
-	// Check vertical edges
-	for _, edge := range verticalEdges {
-		// Does the edge vertically line up with the rectangle?
-		if edge.A.Y >= bottomRight.Y || edge.B.Y <= topLeft.Y {
-			// Falls completely outside vertically, so ignore it
-			continue
-		}
-
-		// Potentialy involved, so perform additional checks
-
-		// Does the edge fall within the rectangle horizontally?
-		if edge.A.X > topLeft.X && edge.A.X < bottomRight.X {
-			// Edge falls within the rectangle, so it's not contained
-			return false
-		}
-
-		// Now check to see if the rectangle is "outside" the edge
-		if (edge.left && bottomRight.X > edge.A.X) || (!edge.left && topLeft.X < edge.A.X) {
-			return false
-		}
-	}
-
-	return true
-}
-
 type Point struct {
 	X int
 	Y int
 }
 
 type Edge struct {
-	A    Point
-	B    Point
-	left bool
+	A Point
+	B Point
 }

@@ -40,12 +40,16 @@ func main() {
 	totalPresses := 0
 
 	for _, machine := range machines {
-		// buttons := solvePart1Buttons(machine)
 		buttons := solvePart1New(machine)
 		totalPresses += len(buttons)
 	}
 
 	fmt.Printf("Part 1: %d (%v)\n", totalPresses, time.Since(begin))
+}
+
+type QueueItem struct {
+	currentLights rune
+	nextButton    rune
 }
 
 // My original attempt at this involved BFS and tracking light states and which buttons were pressed.
@@ -61,7 +65,7 @@ func solvePart1New(machine Machine) []rune {
 	visited[0] = map[rune]bool{}
 
 	for _, button := range machine.buttons {
-		queue = append(queue, QueueItem{currentLights: 0, donePresses: nil, nextButton: button})
+		queue = append(queue, QueueItem{currentLights: 0, nextButton: button})
 	}
 
 	for len(queue) > 0 {
@@ -90,49 +94,16 @@ func solvePart1New(machine Machine) []rune {
 			continue
 		}
 
+		// A new lights state - record the state and what buttons were pressed to get here
 		newPresses := make(map[rune]bool)
 		maps.Copy(newPresses, currentPresses)
 		newPresses[item.nextButton] = true
 		visited[newLights] = newPresses
 
+		// Now queue up further button presses, skipping buttons that have already been pressed
 		for _, button := range machine.buttons {
 			if !newPresses[button] {
-				queue = append(queue, QueueItem{currentLights: newLights, donePresses: nil, nextButton: button})
-			}
-		}
-	}
-
-	return nil
-}
-
-func solvePart1Buttons(machine Machine) []rune {
-	queue := []QueueItem{}
-
-	for _, button := range machine.buttons {
-		queue = append(queue, QueueItem{currentLights: 0, donePresses: map[rune]bool{}, nextButton: button})
-	}
-
-	for len(queue) > 0 {
-		item := queue[0]
-		queue = queue[1:]
-
-		newLights := item.currentLights ^ item.nextButton
-		newDonePresses := make(map[rune]bool)
-		maps.Copy(newDonePresses, item.donePresses)
-		newDonePresses[item.nextButton] = true
-
-		if newLights == machine.lights {
-			// Found solution
-			buttons := []rune{}
-			for button := range newDonePresses {
-				buttons = append(buttons, button)
-			}
-			return buttons
-		}
-
-		for _, button := range machine.buttons {
-			if !newDonePresses[button] {
-				queue = append(queue, QueueItem{currentLights: newLights, donePresses: newDonePresses, nextButton: button})
+				queue = append(queue, QueueItem{currentLights: newLights, nextButton: button})
 			}
 		}
 	}
@@ -209,10 +180,4 @@ type Machine struct {
 	lights   rune
 	buttons  []rune
 	joltages []int
-}
-
-type QueueItem struct {
-	currentLights rune
-	donePresses   map[rune]bool
-	nextButton    rune
 }

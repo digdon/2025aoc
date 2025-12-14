@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -22,6 +23,8 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
+
+	begin := time.Now()
 
 	// Start by parsing out the present shapes
 	presentRE := regexp.MustCompile(`^\d+:`)
@@ -58,11 +61,13 @@ func main() {
 				for _, char := range line {
 					if char == '#' {
 						row = append(row, true)
+						present.complexArea++
 					} else {
 						row = append(row, false)
 					}
 				}
-				present = append(present, row)
+				present.simpleArea += len(row)
+				present.shape = append(present.shape, row)
 			}
 		} else if regionRE.MatchString(line) {
 			// Found the start of the region definitions - we're done with presents
@@ -116,25 +121,32 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Total regions that can fit presents: %d\n", canFitCount)
+	fmt.Printf("Part 1: %d (%v)\n", canFitCount, time.Since(begin))
 }
 
 func canFit(region Region, presents map[int]Present) bool {
-	area := region.width * region.length
+	regionArea := region.width * region.length
 
-	// As a first sanity check, calculate an approximate area needed for the specified presents and see if it fits
-	totalPresentArea := 0
+	// As a first sanity check, calculate a couple approximate areas needed for the specified presents and
+	// see if they fit (or don't)
+	totalSimpleArea := 0
+	totalComplexArea := 0
 
 	for presentNum, count := range region.presentQuantities {
 		present := presents[presentNum]
-		presentArea := len(present) * len(present[0])
-		totalPresentArea += presentArea * count
+		totalSimpleArea += present.simpleArea * count
+		totalComplexArea += present.complexArea * count
 	}
 
-	fmt.Printf("region area: %d, present area: %d\n", area, totalPresentArea)
+	// fmt.Printf("region area: %d, simple present area: %d, complex present area: %d\n", regionArea, totalSimpleArea, totalComplexArea)
 
-	if totalPresentArea > area {
-		// Definitely can't fit
+	if totalSimpleArea <= regionArea {
+		// Room for all of the presents, sitting side-by-side
+		return true
+	}
+
+	if totalComplexArea > regionArea {
+		// Not ernough room even if we could pack them perfectly
 		return false
 	}
 
@@ -143,7 +155,11 @@ func canFit(region Region, presents map[int]Present) bool {
 	return true
 }
 
-type Present [][]bool
+type Present struct {
+	shape       [][]bool
+	simpleArea  int
+	complexArea int
+}
 
 type Region struct {
 	width             int

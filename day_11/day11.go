@@ -39,7 +39,7 @@ func main() {
 
 	// Part 2 stuff
 	begin = time.Now()
-	pathCount = findPart2Path(connections, "svr", &map[string]bool{})
+	pathCount = findPart2Paths(connections, "svr", &map[string]bool{})
 	fmt.Printf("Part 2: %d (%v)\n", pathCount, time.Since(begin))
 }
 
@@ -59,7 +59,7 @@ func findPart1Paths(connections map[string][]string, device string) int {
 
 var cache = map[string]int{}
 
-func findPart2Path(connections map[string][]string, device string, visited *map[string]bool) int {
+func findPart2Paths(connections map[string][]string, device string, visited *map[string]bool) int {
 	// Check the cache to see if we've already computed this
 	cachekey := fmt.Sprintf("%s-%t-%t", device, (*visited)["dac"], (*visited)["fft"])
 	cachedVal, found := cache[cachekey]
@@ -80,7 +80,7 @@ func findPart2Path(connections map[string][]string, device string, visited *map[
 
 	for _, connectedDevice := range connections[device] {
 		(*visited)[connectedDevice] = true
-		totalPaths += findPart2Path(connections, connectedDevice, visited)
+		totalPaths += findPart2Paths(connections, connectedDevice, visited)
 		(*visited)[connectedDevice] = false
 	}
 

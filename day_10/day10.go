@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -35,80 +36,25 @@ func main() {
 
 	fmt.Printf("Parsing time: %v\n", time.Since(begin))
 
+	// Part 1 stuff
 	begin = time.Now()
 
 	totalPresses := 0
 
 	for _, machine := range machines {
-		buttons := solvePart1New(machine)
-		totalPresses += len(buttons)
+		// buttons := solvePart1(machine)
+		// totalPresses += len(buttons)
+		totalPresses += solvePart1New(machine)
 	}
 
 	fmt.Printf("Part 1: %d (%v)\n", totalPresses, time.Since(begin))
 }
 
-type QueueItem struct {
-	currentLights rune
-	nextButton    rune
-}
-
-// My original attempt at this involved BFS and tracking light states and which buttons were pressed.
-// Each button can be pressed at most once, so by tracking which buttons were pressed, we could avoid
-// trying to push a button a second time. This greatly reduced the search space, but I was treating
-// A, B, C button presses as different from B, A, C, even though they result in the same final state.
-// This requird a lot of extra memory copying and resulted in, ultimately, redundant work.
-// The new approach tracks only the current light state, and for each new state reached, tracks
-// which buttons were pressed to reach that state.
-func solvePart1New(machine Machine) []rune {
-	queue := []QueueItem{}
-	visited := map[rune]map[rune]bool{}
-	visited[0] = map[rune]bool{}
-
-	for _, button := range machine.buttons {
-		queue = append(queue, QueueItem{currentLights: 0, nextButton: button})
-	}
-
-	for len(queue) > 0 {
-		item := queue[0]
-		queue = queue[1:]
-
-		currentPresses, _ := visited[item.currentLights]
-		newLights := item.currentLights ^ item.nextButton
-
-		if newLights == machine.lights {
-			// Found a solution
-			buttons := []rune{}
-
-			for button := range currentPresses {
-				buttons = append(buttons, button)
-			}
-
-			buttons = append(buttons, item.nextButton)
-			return buttons
-		}
-
-		_, seen := visited[newLights]
-
-		if seen {
-			// Already seen this lights state, so no further processing needed
-			continue
-		}
-
-		// A new lights state - record the state and what buttons were pressed to get here
-		newPresses := make(map[rune]bool)
-		maps.Copy(newPresses, currentPresses)
-		newPresses[item.nextButton] = true
-		visited[newLights] = newPresses
-
-		// Now queue up further button presses, skipping buttons that have already been pressed
-		for _, button := range machine.buttons {
-			if !newPresses[button] {
-				queue = append(queue, QueueItem{currentLights: newLights, nextButton: button})
-			}
-		}
-	}
-
-	return nil
+type Machine struct {
+	origString string
+	lights     rune
+	buttons    []rune
+	joltages   []int
 }
 
 func parseMachine(line string) Machine {
@@ -173,11 +119,92 @@ func parseMachine(line string) Machine {
 		buttons = append(buttons, buttonValue)
 	}
 
-	return Machine{lights: lights, buttons: buttons, joltages: joltages}
+	return Machine{origString: line, lights: lights, buttons: buttons, joltages: joltages}
 }
 
-type Machine struct {
-	lights   rune
-	buttons  []rune
-	joltages []int
+// And here's yet another way to do this - just brute-force all combinations of button presses. Turns out that, given the
+// input size, this is actually much faster than the BFS appriach.
+func solvePart1New(machine Machine) int {
+	minPresses := math.MaxInt
+
+	for i := 0; i < (1 << len(machine.buttons)); i++ {
+		currentLights := rune(0)
+		presses := 0
+
+		for j := 0; j < len(machine.buttons); j++ {
+			if (i & (1 << j)) != 0 {
+				currentLights ^= machine.buttons[j]
+				presses++
+			}
+		}
+		if currentLights == machine.lights {
+			minPresses = min(minPresses, presses)
+		}
+	}
+
+	return minPresses
+}
+
+// My original attempt at this involved BFS and tracking light states and which buttons were pressed.
+// Each button can be pressed at most once, so by tracking which buttons were pressed, we could avoid
+// trying to push a button a second time. This greatly reduced the search space, but I was treating
+// A, B, C button presses as different from B, A, C, even though they result in the same final state.
+// This required a lot of extra memory copying and resulted in, ultimately, redundant work.
+// The new approach tracks only the current light state, and for each new state reached, tracks
+// which buttons were pressed (regardless of order) to reach that state.
+type QueueItem struct {
+	currentLights rune
+	nextButton    rune
+}
+
+func solvePart1(machine Machine) []rune {
+	queue := []QueueItem{}
+	visited := map[rune]map[rune]bool{}
+	visited[0] = map[rune]bool{}
+
+	for _, button := range machine.buttons {
+		queue = append(queue, QueueItem{currentLights: 0, nextButton: button})
+	}
+
+	for len(queue) > 0 {
+		item := queue[0]
+		queue = queue[1:]
+
+		currentPresses, _ := visited[item.currentLights]
+		newLights := item.currentLights ^ item.nextButton
+
+		if newLights == machine.lights {
+			// Found a solution
+			buttons := []rune{}
+
+			for button := range currentPresses {
+				buttons = append(buttons, button)
+			}
+
+			buttons = append(buttons, item.nextButton)
+			return buttons
+		}
+
+		_, seen := visited[newLights]
+
+		if seen {
+			// Already seen this lights state, so no further processing needed
+			continue
+		}
+
+		// A new lights state - record the state and what buttons were pressed to get here
+		newPresses := make(map[rune]bool)
+		maps.Copy(newPresses, currentPresses)
+		newPresses[item.nextButton] = true
+		visited[newLights] = newPresses
+
+		// Now queue up further button presses, skipping buttons that have already been pressed
+		for _, button := range machine.buttons {
+			if !newPresses[button] {
+				queue = append(queue, QueueItem{currentLights: newLights, nextButton: button})
+			}
+		}
+	}
+
+	return nil
 }

@@ -123,7 +123,8 @@ func part1MinPresses(machine Machine) int {
 		for j := range machine.buttons {
 			// Check to see if button j is pressed in this combination (button number bit in i is set)
 			if (i & (1 << j)) != 0 {
-				// Press the button. This involves looking at each light index the button toggles and flipping that bit in lights.
+				// Press the button. This involves looking at each light index the button toggles and
+				// flipping that bit in lights.
 				for _, lightIndex := range machine.buttons[j] {
 					lights ^= 1 << lightIndex
 				}
@@ -145,6 +146,10 @@ type PatternInfo struct {
 	cost    int
 }
 
+// This does a lot of the heavy lifting for part 2. It generates all possible patterns of button presses,
+// and groups them by their resulting parity pattern (i.e., which lights are on/off after applying the pattern).
+// For each parity pattern, it keeps track of the various light hit counts that can produce that parity,
+// along with the minimum cost (number of button presses) to achieve that particular light hit count.
 func generatePatterns(numLights int, buttons [][]int) map[rune]map[string]PatternInfo {
 	patterns := map[rune]map[string]PatternInfo{}
 
@@ -208,12 +213,12 @@ func part2MinPresses(joltages []int, patterns map[rune]map[string]PatternInfo, c
 	// Create a cache key based on current joltages
 	key := fmt.Sprintf("%v", joltages)
 
-	// Check cache
+	// Check cache to see if we've already seen these values before
 	if val, ok := cache[key]; ok {
 		return val
 	}
 
-	// Determine current parity pattern
+	// Determine parity pattern, based on which joltages are odd
 	parityPattern := rune(0)
 
 	for i, joltage := range joltages {
@@ -252,7 +257,9 @@ func part2MinPresses(joltages []int, patterns map[rune]map[string]PatternInfo, c
 		}
 
 		// Pattern is valid, so apply it to the joltages. At the same time, we know that after applying the pattern,
-		// all resulting joltages will be even, so we can halve them for the next recursion.
+		// all resulting joltages will be even, so we can halve them for the next recursion. Why does this work?
+		// Because we are looking for parity patterns that ultimately only match joltages that are odd, meaning
+		// after applying the pattern, all joltages must be even.
 		newJoltages := make([]int, len(joltages))
 
 		for i := range joltages {

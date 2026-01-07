@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"maps"
 	"math"
 	"os"
 	"strconv"
@@ -25,119 +24,115 @@ func main() {
 		os.Exit(1)
 	}
 
-	begin := time.Now()
-
+	// Parse out all of the machine data
 	machines := []Machine{}
 
 	for _, line := range inputLines {
-		machine := parseMachine(line)
-		machines = append(machines, machine)
+		machines = append(machines, parseMachine(line))
 	}
 
-	fmt.Printf("Parsing time: %v\n", time.Since(begin))
-
 	// Part 1 stuff
-	begin = time.Now()
+	begin := time.Now()
 
 	totalPresses := 0
 
 	for _, machine := range machines {
-		// buttons := solvePart1(machine)
-		// totalPresses += len(buttons)
-		totalPresses += solvePart1New(machine)
+		totalPresses += part1MinPresses(machine)
 	}
 
 	fmt.Printf("Part 1: %d (%v)\n", totalPresses, time.Since(begin))
+
+	// Part 2 stuff
+	begin = time.Now()
+
+	totalPresses = 0
+
+	for _, machine := range machines {
+		patterns := generatePatterns(len(machine.joltages), machine.buttons)
+		cache := map[string]int{}
+		totalPresses += part2MinPresses(machine.joltages, patterns, cache)
+	}
+
+	fmt.Printf("Part 2: %d (%v)\n", totalPresses, time.Since(begin))
 }
 
 type Machine struct {
-	origString string
-	lights     rune
-	buttons    []rune
-	joltages   []int
+	lights   rune
+	buttons  [][]int
+	joltages []int
 }
 
 func parseMachine(line string) Machine {
-	// find lights and joltages positions
-	lightStart, lightEnd := -1, -1
-	joltageStart, joltageEnd := -1, -1
+	parts := strings.Split(line, " ")
 
-	for i, char := range line {
-		switch char {
-		case '[':
-			lightStart = i
-		case ']':
-			lightEnd = i
-		case '{':
-			joltageStart = i
-		case '}':
-			joltageEnd = i
-		}
-	}
+	// Parse out the target light config
+	lights := rune(0)
+	lightsString := parts[0][1 : len(parts[0])-1]
 
-	// Build lights value
-	var lights rune
-	lightsLength := lightEnd - lightStart - 1
-	for i := range lightsLength {
-		if line[lightStart+1+i] == '#' {
+	for i := range lightsString {
+		if lightsString[i] == '#' {
 			lights |= 1 << i
 		}
 	}
 
-	// Parse out joltage values
-	parts := strings.Split(line[joltageStart+1:joltageEnd], ",")
-	joltages := make([]int, len(parts))
-	for i, part := range parts {
-		value, err := strconv.Atoi(strings.TrimSpace(part))
+	// Parse out the joltages
+	joltages := []int{}
+	joltageStrings := strings.Split(parts[len(parts)-1][1:len(parts[len(parts)-1])-1], ",")
+
+	for i := range joltageStrings {
+		val, err := strconv.Atoi(joltageStrings[i])
+
 		if err != nil {
-			log.Println("Error parsing joltage:", err)
-			os.Exit(1)
+			log.Fatalf("Error parsing joltage value: %v", err)
 		}
-		joltages[i] = value
+
+		joltages = append(joltages, val)
 	}
 
-	// Parse out the buttons
-	buttons := []rune{}
-	buttonsString := strings.TrimSpace(line[lightEnd+1 : joltageStart])
-	buttonParts := strings.SplitSeq(buttonsString, " ")
+	// Parse out the buttons. A button is represented as a list of light indices it toggles.
+	buttons := [][]int{}
 
-	for part := range buttonParts {
-		wiring := part[1 : len(part)-1]
-		bits := strings.Split(wiring, ",")
-		var buttonValue rune
+	for i := 1; i < len(parts)-1; i++ {
+		buttonValues := strings.Split(parts[i][1:len(parts[i])-1], ",")
+		button := []int{}
 
-		for _, bit := range bits {
-			bitValue, err := strconv.Atoi(bit)
+		for j := range buttonValues {
+			val, err := strconv.Atoi(buttonValues[j])
+
 			if err != nil {
-				log.Println("Error parsing button bit:", err)
-				os.Exit(1)
+				log.Fatalf("Error parsing button value: %v", err)
 			}
 
-			buttonValue |= 1 << bitValue
+			button = append(button, val)
 		}
 
-		buttons = append(buttons, buttonValue)
+		buttons = append(buttons, button)
 	}
 
-	return Machine{origString: line, lights: lights, buttons: buttons, joltages: joltages}
+	return Machine{lights: lights, buttons: buttons, joltages: joltages}
 }
 
-// And here's yet another way to do this - just brute-force all combinations of button presses. Turns out that, given the
-// input size, this is actually much faster than the BFS appriach.
-func solvePart1New(machine Machine) int {
+func part1MinPresses(machine Machine) int {
 	minPresses := math.MaxInt
 
-	for i := 0; i < (1 << len(machine.buttons)); i++ {
-		currentLights := rune(0)
+	for i := range 1 << len(machine.buttons) {
+		// Iterate through all possible button press combinations (button numbers represented by bits in i)
+		lights := rune(0)
 		presses := 0
 
-		for j := 0; j < len(machine.buttons); j++ {
+		for j := range machine.buttons {
+			// Check to see if button j is pressed in this combination (button number bit in i is set)
 			if (i & (1 << j)) != 0 {
-				currentLights ^= machine.buttons[j]
+				// Press the button. This involves looking at each light index the button toggles and flipping that bit in lights.
+				for _, lightIndex := range machine.buttons[j] {
+					lights ^= 1 << lightIndex
+				}
+
 				presses++
 			}
 		}
-		if currentLights == machine.lights {
+
+		if lights == machine.lights {
 			minPresses = min(minPresses, presses)
 		}
 	}
@@ -145,66 +140,131 @@ func solvePart1New(machine Machine) int {
 	return minPresses
 }
 
-// My original attempt at this involved BFS and tracking light states and which buttons were pressed.
-// Each button can be pressed at most once, so by tracking which buttons were pressed, we could avoid
-// trying to push a button a second time. This greatly reduced the search space, but I was treating
-// A, B, C button presses as different from B, A, C, even though they result in the same final state.
-// This required a lot of extra memory copying and resulted in, ultimately, redundant work.
-// The new approach tracks only the current light state, and for each new state reached, tracks
-// which buttons were pressed (regardless of order) to reach that state.
-type QueueItem struct {
-	currentLights rune
-	nextButton    rune
+type PatternInfo struct {
+	pattern []int
+	cost    int
 }
 
-func solvePart1(machine Machine) []rune {
-	queue := []QueueItem{}
-	visited := map[rune]map[rune]bool{}
-	visited[0] = map[rune]bool{}
+func generatePatterns(numLights int, buttons [][]int) map[rune]map[string]PatternInfo {
+	patterns := map[rune]map[string]PatternInfo{}
 
-	for _, button := range machine.buttons {
-		queue = append(queue, QueueItem{currentLights: 0, nextButton: button})
-	}
+	for i := range 1 << len(buttons) {
+		lightCounts := make([]int, numLights)
+		presses := 0
 
-	for len(queue) > 0 {
-		item := queue[0]
-		queue = queue[1:]
+		for j := range buttons {
+			if (i & (1 << j)) != 0 {
+				// press button j
+				for _, lightIndex := range buttons[j] {
+					lightCounts[lightIndex]++
+				}
 
-		currentPresses, _ := visited[item.currentLights]
-		newLights := item.currentLights ^ item.nextButton
-
-		if newLights == machine.lights {
-			// Found a solution
-			buttons := []rune{}
-
-			for button := range currentPresses {
-				buttons = append(buttons, button)
+				presses++
 			}
-
-			buttons = append(buttons, item.nextButton)
-			return buttons
 		}
 
-		_, seen := visited[newLights]
+		parityPattern := rune(0)
 
-		if seen {
-			// Already seen this lights state, so no further processing needed
+		for k := range lightCounts {
+			if lightCounts[k]%2 != 0 {
+				parityPattern |= 1 << k
+			}
+		}
+
+		// Add to patterns map
+		ppMap, exists := patterns[parityPattern]
+
+		if !exists {
+			ppMap = map[string]PatternInfo{}
+			patterns[parityPattern] = ppMap
+		}
+
+		ltk := fmt.Sprintf("%v", lightCounts)
+		item, exists := ppMap[ltk]
+
+		if !exists || presses < item.cost {
+			ppMap[ltk] = PatternInfo{pattern: lightCounts, cost: presses}
+		}
+	}
+
+	return patterns
+}
+
+func part2MinPresses(joltages []int, patterns map[rune]map[string]PatternInfo, cache map[string]int) int {
+	// Check if we've reached all-zero joltages
+	allZero := true
+
+	for _, joltage := range joltages {
+		if joltage != 0 {
+			allZero = false
+			break
+		}
+	}
+
+	if allZero {
+		return 0
+	}
+
+	// Create a cache key based on current joltages
+	key := fmt.Sprintf("%v", joltages)
+
+	// Check cache
+	if val, ok := cache[key]; ok {
+		return val
+	}
+
+	// Determine current parity pattern
+	parityPattern := rune(0)
+
+	for i, joltage := range joltages {
+		if joltage%2 != 0 {
+			parityPattern |= 1 << i
+		}
+	}
+
+	// Look up possible patterns for this parity
+	patternOptions, exists := patterns[parityPattern]
+
+	if !exists {
+		// No patterns available for this parity, return a large number
+		return 1000000
+	}
+
+	minPresses := 1000000
+
+	for _, patternInfo := range patternOptions {
+		// Check to see if we can apply this particular pattern. Unlike part 1, which toggles the lights,
+		// the joltage for a particular light increases every time the light is hit by a button. So we have
+		// to check to see if the pattern (which represents a series of button presses) would result in a light
+		// being hit too many times. Because we are subtracting the pattern from the joltages, too many
+		// presses would result in a negative joltage for a particular light.
+		canApply := true
+
+		for i := range joltages {
+			if joltages[i]-patternInfo.pattern[i] < 0 {
+				canApply = false
+				break
+			}
+		}
+
+		if !canApply {
 			continue
 		}
 
-		// A new lights state - record the state and what buttons were pressed to get here
-		newPresses := make(map[rune]bool)
-		maps.Copy(newPresses, currentPresses)
-		newPresses[item.nextButton] = true
-		visited[newLights] = newPresses
+		// Pattern is valid, so apply it to the joltages. At the same time, we know that after applying the pattern,
+		// all resulting joltages will be even, so we can halve them for the next recursion.
+		newJoltages := make([]int, len(joltages))
 
-		// Now queue up further button presses, skipping buttons that have already been pressed
-		for _, button := range machine.buttons {
-			if !newPresses[button] {
-				queue = append(queue, QueueItem{currentLights: newLights, nextButton: button})
-			}
+		for i := range joltages {
+			newJoltages[i] = (joltages[i] - patternInfo.pattern[i]) / 2
 		}
+
+		// Recurse. Because we halved the joltages, we need to multiply the resulting presses by 2
+		// (to account for the doubling effect of halving). Plus we add the cost of this pattern.
+		minPresses = min(minPresses, patternInfo.cost+part2MinPresses(newJoltages, patterns, cache)*2)
 	}
 
-	return nil
+	cache[key] = minPresses
+
+	return minPresses
 }
